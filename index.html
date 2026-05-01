@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>War Layout BD Clan Castel</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f0f4f8;
+      text-align: center;
+    }
+
+    .box {
+      background: white;
+      width: 90%;
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    button {
+      background: #4da6ff;
+      color: white;
+      border: none;
+      padding: 10px;
+      margin: 5px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    input, select {
+      padding: 8px;
+      margin: 5px;
+      width: 60%;
+    }
+
+    img {
+      width: 120px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>War Layout BD Clan Castel</h2>
+
+<!-- CATEGORY -->
+<button onclick="load('war')">War</button>
+<button onclick="load('ranked')">Ranked</button>
+<button onclick="load('farming')">Farming</button>
+<button onclick="load('cwl')">CWL</button>
+
+<br><br>
+
+<!-- TH FILTER -->
+<button onclick="filterTH('all')">All TH</button>
+<button onclick="filterTH('16')">TH16</button>
+<button onclick="filterTH('17')">TH17</button>
+<button onclick="filterTH('18')">TH18</button>
+
+<br><br>
+
+<input id="search" placeholder="Search TH" onkeyup="searchBase()">
+
+<div id="list"></div>
+
+<hr>
+
+<h3>Login (Admin)</h3>
+<input id="email" placeholder="Email">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<hr>
+
+<h3>Add Base (Permission Required)</h3>
+
+<select id="cat">
+  <option>war</option>
+  <option>ranked</option>
+  <option>farming</option>
+  <option>cwl</option>
+</select>
+
+<select id="th">
+  <option>6</option><option>7</option><option>8</option><option>9</option>
+  <option>10</option><option>11</option><option>12</option>
+  <option>13</option><option>14</option><option>15</option>
+  <option>16</option><option>17</option><option>18</option>
+</select>
+
+<br>
+
+<input id="link" placeholder="Base link">
+<input id="img" placeholder="Image URL">
+
+<br>
+
+<button onclick="requestAdd()">Request Add Base</button>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth();
+const db = getFirestore(app);
+
+let all = [];
+let isAdmin = false;
+
+/* LOGIN */
+window.login = function(){
+  signInWithEmailAndPassword(auth, email.value, pass.value)
+  .then(()=> {
+    isAdmin = true;
+    alert("Admin Login Success");
+  })
+  .catch(e => alert(e.message));
+}
+
+/* REQUEST ADD (permission system) */
+window.requestAdd = async function(){
+
+  await addDoc(collection(db,"bases"),{
+    category: cat.value,
+    th: th.value,
+    link: link.value,
+    img: img.value,
+    status: "pending"
+  });
+
+  alert("Request sent (waiting approval)");
+}
+
+/* LOAD DATA */
+window.load = async function(type){
+
+  let snap = await getDocs(collection(db,"bases"));
+  all = [];
+
+  snap.forEach(d=>{
+    let data = d.data();
+
+    if(data.category == type && data.status == "approved"){
+      all.push(data);
+    }
+  });
+
+  render(all);
+}
+
+/* ADMIN APPROVE (manual logic) */
+window.approve = async function(id){
+  if(isAdmin){
+    await updateDoc(doc(db,"bases",id),{
+      status: "approved"
+    });
+  }
+}
+
+/* FILTER TH */
+window.filterTH = function(th){
+
+  if(th == "all") return render(all);
+
+  let f = all.filter(b=>b.th == th);
+  render(f);
+}
+
+/* SEARCH */
+window.searchBase = function(){
+
+  let v = search.value.toLowerCase();
+
+  let f = all.filter(b =>
+    b.th.toLowerCase().includes(v)
+  );
+
+  render(f);
+}
+
+/* RENDER */
+function render(data){
+
+  let html = "";
+
+  data.forEach(b=>{
+    html += `
+      <div>
+        <img src="${b.img}">
+        <br>
+        <a href="${b.link}">
+          <button>TH${b.th}</button>
+        </a>
+      </div>
+      <br>
+    `;
+  });
+
+  document.getElementById("list").innerHTML = html;
+}
+
+/* PWA */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+
+</script>
+
+</body>
+</html>
